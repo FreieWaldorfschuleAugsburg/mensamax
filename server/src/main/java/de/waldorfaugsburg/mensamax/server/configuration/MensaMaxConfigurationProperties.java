@@ -1,4 +1,4 @@
-package de.waldorfaugsburg.mensamax.server;
+package de.waldorfaugsburg.mensamax.server.configuration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.ConstructorBinding;
@@ -10,7 +10,6 @@ import java.util.Set;
 @ConfigurationProperties("mensamax")
 public record MensaMaxConfigurationProperties(String projectId, String facilityId,
                                               String username, String password,
-                                              int clientCount, int identityClientCount,
-                                              Map<String, Set<String>> restrictedRoles,
+                                              int clientCount, Map<String, Set<String>> restrictedRoles,
                                               Set<Long> restrictedProducts) {
 }
