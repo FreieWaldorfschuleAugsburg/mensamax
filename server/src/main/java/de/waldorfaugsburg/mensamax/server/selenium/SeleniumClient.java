@@ -1,20 +1,18 @@
 package de.waldorfaugsburg.mensamax.server.selenium;
 
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 
 import java.io.Closeable;
-import java.io.IOException;
 
 public final class SeleniumClient implements Closeable {
 
     private final int instanceId;
-    private final ChromeDriver webDriver;
+    private final FirefoxDriver webDriver;
 
     private long lastActionDate;
     private String currentKiosk;
 
-    public SeleniumClient(final int instanceId, final ChromeDriver webDriver) {
+    public SeleniumClient(final int instanceId, final FirefoxDriver webDriver) {
         this.instanceId = instanceId;
         this.webDriver = webDriver;
     }
@@ -23,7 +21,7 @@ public final class SeleniumClient implements Closeable {
         return instanceId;
     }
 
-    public ChromeDriver getWebDriver() {
+    public FirefoxDriver getWebDriver() {
         return webDriver;
     }
 

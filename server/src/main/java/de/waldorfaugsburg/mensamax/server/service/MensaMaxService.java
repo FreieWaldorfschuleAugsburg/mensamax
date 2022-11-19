@@ -11,13 +11,12 @@ import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClient;
 import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClientStack;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.springframework.stereotype.Service;
 
+import java.sql.Time;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,16 +27,14 @@ import java.util.concurrent.TimeUnit;
 public class MensaMaxService {
 
     private static final String URL = "https://mensastadt.de";
-    private static final String LOGIN_URL = URL + "/Login.aspx";
+    private static final String LOGIN_URL = URL + "/?projekt=%s&einrichtung=%s&user=%s";
     private static final String INDEX_URL = URL + "/mensamax/index.aspx";
     private static final String KIOSK_SELECTOR_URL = URL + "/mensamax/grafik.aspx";
-    private static final String KIOSK_URL = URL + "/mensamax/Kiosk/Verkauf/VerkaufOeffnenForm.aspx";
+    private static final String KIOSK_CHIP_URL = URL + "/mensamax/Kiosk/Verkauf/VerkaufOeffnenForm.aspx";
+    private static final String KIOSK_BARCODE_URL = URL + "/mensamax/Kiosk/Verkauf/VerkaufForm.aspx";
     private static final String SEARCH_URL = URL + "/mensamax/Formulare/Person/PersonSucheForm.aspx";
-    private static final String DATA_ADMIN_URL = URL + "/mensamax/Formulare/Person/PersonDatenForm.aspx";
-    private static final String DATA_SELF_URL = URL + "/mensamax/meinedaten/benutzerdatenform.aspx";
-    private static final String IDENTIFICATION_ADMIN_URL = URL + "/mensamax/Formulare/Person/PersonIdentifikationForm.aspx";
-    private static final String IDENTIFICATION_SELF_URL = URL + "/mensamax/meinedaten/MeineIdentifikation.aspx";
-    private static final String LOGOUT_URL = URL + "/mensamax/logout.aspx";
+    private static final String DATA_URL = URL + "/mensamax/Formulare/Person/PersonDatenForm.aspx";
+    private static final String IDENTIFICATION_URL = URL + "/mensamax/Formulare/Person/PersonIdentifikationForm.aspx";
 
     private final LoadingCache<String, MensaMaxUser> chipUserCache = CacheBuilder.newBuilder().build(new CacheLoader<>() {
         @Override
@@ -64,8 +61,7 @@ public class MensaMaxService {
     private final SeleniumService seleniumService;
     private final SeleniumClientStack clientStack;
 
-    public MensaMaxService(final MensaMaxConfigurationProperties properties,
-                           final SeleniumService seleniumService) {
+    public MensaMaxService(final MensaMaxConfigurationProperties properties, final SeleniumService seleniumService) {
         this.properties = properties;
         this.seleniumService = seleniumService;
         this.clientStack = seleniumService.reserveClients(properties.clientCount(), this::login);
@@ -103,16 +99,14 @@ public class MensaMaxService {
         try {
             login(client);
             webDriver.get(SEARCH_URL);
-            seleniumService.waitUntilPageReady(webDriver);
 
-            seleniumService.clearAndSendKeys(webDriver, "tbloginname", username, Keys.ENTER);
-            seleniumService.waitUntilPageReady(webDriver);
+            seleniumService.clearAndSendKeys(webDriver, By.id("tbloginname"), username, Keys.ENTER);
 
             log.info("Requested user by username '{}'", username);
             return readUserData(webDriver);
         } catch (final Exception e) {
             log.error("An error occurred while requesting user by username {}", username, e);
-            throw e;
+            throw new InvalidUsernameException(username, e);
         } finally {
             clientStack.returnClient(client);
         }
@@ -126,29 +120,27 @@ public class MensaMaxService {
         try {
             login(client);
             webDriver.get(SEARCH_URL);
-            seleniumService.waitUntilPageReady(webDriver);
 
-            webDriver.findElement(By.id("btnBarcodeSearch")).click();
+            seleniumService.click(webDriver, By.id("btnBarcodeSearch"));
             final WebElement barcodeElement = webDriver.switchTo().activeElement();
             barcodeElement.sendKeys(chip, Keys.ENTER);
-            seleniumService.waitUntilPageReady(webDriver);
 
             log.info("Requested user by chip id '{}'", chip);
             return readUserData(webDriver);
         } catch (final Exception e) {
             log.error("An error occurred while requesting user by chip id {}", chip, e);
-            throw e;
+            throw new InvalidChipException(chip, e);
         } finally {
             clientStack.returnClient(client);
         }
     }
 
-    public void transaction(final String chipId, final String kiosk, final long productBarcode, final int quantity) {
-        Preconditions.checkNotNull(chipId, "chipId may not be null");
+    public void transaction(final String chip, final String kiosk, final long barcode, final int quantity) {
+        Preconditions.checkNotNull(chip, "chip may not be null");
         Preconditions.checkArgument(quantity > 0, "quantity must be bigger than zero");
 
-        if (properties.restrictedProducts().contains(productBarcode)) {
-            final MensaMaxUser user = getUserByChip(chipId);
+        if (properties.restrictedProducts().contains(barcode)) {
+            final MensaMaxUser user = getUserByChip(chip);
             final Set<String> restrictedRoles = properties.restrictedRoles().get(kiosk);
             if (restrictedRoles != null && restrictedRoles.contains(user.getUserGroup())) {
                 throw new ProductRestrictedException();
@@ -164,9 +156,8 @@ public class MensaMaxService {
             final String currentKiosk = client.getCurrentKiosk();
             if (currentKiosk == null || !currentKiosk.equals(kiosk)) {
                 webDriver.get(KIOSK_SELECTOR_URL);
-                seleniumService.waitUntilPageReady(webDriver);
 
-                final Select kioskSelect = new Select(webDriver.findElement(By.id("cboKiosk")));
+                final Select kioskSelect = new Select(seleniumService.waitUntilElementPresent(webDriver, By.id("cboKiosk")));
                 for (int i = 0; i < kioskSelect.getOptions().size(); i++) {
                     final WebElement element = kioskSelect.getOptions().get(i);
                     if (element.getText().equalsIgnoreCase(kiosk)) {
@@ -178,33 +169,36 @@ public class MensaMaxService {
                         break;
                     }
                 }
-                seleniumService.waitUntilPageReady(webDriver);
             }
 
-            webDriver.get(KIOSK_URL);
-            seleniumService.waitUntilPageReady(webDriver);
+            webDriver.get(KIOSK_CHIP_URL);
 
-            final WebElement identifierElement = webDriver.switchTo().activeElement();
-            identifierElement.sendKeys(chipId, Keys.ENTER);
-            seleniumService.waitUntilPageReady(webDriver);
+            final WebElement identifierElement = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxBarcode"));
+            identifierElement.sendKeys(chip, Keys.ENTER);
 
-            if (!webDriver.findElements(By.id("lblStatus")).isEmpty()) {
-                throw new InvalidChipException(chipId);
+            try {
+                seleniumService.waitUntil(webDriver, ExpectedConditions.urlToBe(KIOSK_BARCODE_URL));
+            } catch (final TimeoutException ignored) {
+            }
+
+            try {
+                final WebElement statusElement = seleniumService.waitUntilElementPresent(webDriver, By.id("lblStatus"));
+                throw new InvalidChipException(chip, statusElement.getText());
+            } catch (final TimeoutException ignored) {
             }
 
             for (int i = 0; i < quantity; i++) {
-                final WebElement barcodeElement = webDriver.switchTo().activeElement();
-                barcodeElement.sendKeys(Long.toString(productBarcode), Keys.ENTER);
-                seleniumService.waitUntilPageReady(webDriver);
+                final WebElement barcodeElement = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxBarcode"));
+                barcodeElement.sendKeys(Long.toString(barcode), Keys.ENTER);
 
                 final String sourceStringProductSelection = retrieveDialogSourceString(webDriver);
                 if (sourceStringProductSelection != null) {
                     if (sourceStringProductSelection.contains("identifiziert")) {
-                        throw new InvalidProductException(productBarcode, kiosk);
+                        throw new InvalidProductException(barcode, kiosk);
                     } else if (sourceStringProductSelection.contains("Kreditrahmen")) {
                         throw new AccountOverdrawnException();
                     } else if (sourceStringProductSelection.contains("Lagerbestand")) {
-                        throw new NoStockException(productBarcode, kiosk);
+                        throw new NoStockException(barcode, kiosk);
                     } else if (sourceStringProductSelection.contains("Tageslimit")) {
                         throw new AccountDailyLimitException();
                     } else {
@@ -213,15 +207,15 @@ public class MensaMaxService {
                 }
             }
 
-            webDriver.findElement(By.name("btnPay")).click();
-            seleniumService.waitUntilPageReady(webDriver);
+            // Let's spend some money
+            seleniumService.click(webDriver, By.id("btnPay"));
 
             final String sourceStringPayment = retrieveDialogSourceString(webDriver);
             if (sourceStringPayment != null) {
                 throw new UnknownErrorException(sourceStringPayment);
             }
 
-            log.info("Processed transaction for product '{}' by chip id '{}'", productBarcode, chipId);
+            log.info("Processed transaction for product '{}' by chip id '{}'", barcode, chip);
         } catch (final Exception e) {
             log.error("An error occurred while performing transaction", e);
             throw e;
@@ -242,92 +236,53 @@ public class MensaMaxService {
 
         final WebDriver webDriver = client.getWebDriver();
         webDriver.get(INDEX_URL);
-        seleniumService.waitUntilPageReady(webDriver);
 
-        // Check if already logged in
-        if (!webDriver.getCurrentUrl().contains("CustErrors.aspx")) {
-            return;
+        try {
+            seleniumService.waitUntil(webDriver, ExpectedConditions.urlMatches("^((?!\bCustErrors.aspx\b).)*$"));
+
+            // Opening login page
+            webDriver.get(String.format(LOGIN_URL, properties.projectId(), properties.facilityId(), properties.username()));
+
+            seleniumService.clearAndSendKeys(webDriver, By.id("tbxKennwort"), password);
+
+            // Press login
+            seleniumService.click(webDriver, By.id("btnLogin"));
+
+            // Wait till login is finished
+            seleniumService.waitUntil(webDriver, ExpectedConditions.urlToBe(INDEX_URL));
+
+            // Set current kiosk name as property
+            webDriver.get(KIOSK_SELECTOR_URL);
+
+            final Select kioskSelect = new Select(seleniumService.waitUntilElementPresent(webDriver, By.id("cboKiosk")));
+            client.setCurrentKiosk(kioskSelect.getFirstSelectedOption().getText());
+
+            client.setLastActionDate(System.currentTimeMillis());
+            log.info("Client '{}' successfully logged in as '{}'", client.getInstanceId(), username);
+
+        } catch (final TimeoutException e) {
+            try {
+                final WebElement element = seleniumService.waitUntilElementPresent(webDriver, By.id("lblHinweis"));
+                throw new LoginException(element.getText());
+            } catch (TimeoutException ignored) {
+            }
+            throw new LoginException(e);
         }
-
-        // Opening login page
-        webDriver.get(URL);
-        seleniumService.waitUntilPageReady(webDriver);
-
-        seleniumService.clearAndSendKeys(webDriver, "tbxProjekt", properties.projectId(), Keys.TAB);
-
-        // Waiting for project verification to be finished (weird page "reload" although data provider is already correct)
-        seleniumService.waitUntilPageReady(webDriver);
-        seleniumService.clearAndSendKeys(webDriver, "tbxEinrichtung", properties.facilityId());
-        seleniumService.clearAndSendKeys(webDriver, "tbxBenutzername", username);
-        seleniumService.clearAndSendKeys(webDriver, "tbxKennwort", password);
-
-        // Press login
-        webDriver.findElement(By.name("btnLogin")).click();
-        seleniumService.waitUntilPageReady(webDriver);
-
-        if (!webDriver.getCurrentUrl().equals(INDEX_URL)) {
-            throw new LoginException();
-        }
-
-        // Set current kiosk name as property
-        webDriver.get(KIOSK_SELECTOR_URL);
-        seleniumService.waitUntilPageReady(webDriver);
-        final Select kioskSelect = new Select(webDriver.findElement(By.id("cboKiosk")));
-        client.setCurrentKiosk(kioskSelect.getFirstSelectedOption().getText());
-
-        client.setLastActionDate(System.currentTimeMillis());
-        log.info("Client '{}' successfully logged in as '{}'", client.getInstanceId(), username);
     }
 
-    private void logout(final SeleniumClient client) throws LogoutException {
-        client.setLastActionDate(0);
+    private MensaMaxUser readUserData(final WebDriver webDriver) throws TimeoutException {
+        seleniumService.waitUntil(webDriver, ExpectedConditions.or(ExpectedConditions.urlMatches(DATA_URL)));
 
-        final WebDriver webDriver = client.getWebDriver();
-        webDriver.get(LOGOUT_URL);
-        seleniumService.waitUntilPageReady(webDriver);
+        final String username = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxBenutzername")).getAttribute("value");
+        final String firstName = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxVorname")).getAttribute("value");
+        final String lastName = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxNachname")).getAttribute("value");
+        final String dateOfBirth = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxGebDatum")).getAttribute("value");
+        final String email = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxEmail")).getAttribute("value");
+        final String userGroup = new Select(seleniumService.waitUntilElementPresent(webDriver, By.id("cboKlasse"))).getFirstSelectedOption().getText();
 
-        if (!webDriver.getCurrentUrl().equals(LOGIN_URL)) {
-            throw new LogoutException();
-        }
+        webDriver.get(IDENTIFICATION_URL);
 
-        log.info("Client '{}' successfully logged out!", client.getInstanceId());
-    }
-
-    private MensaMaxUser readUserData(final WebDriver webDriver) {
-        final String currentUrl = webDriver.getCurrentUrl();
-        if (currentUrl.equals(SEARCH_URL)) return null;
-
-        final String username;
-        final String firstName;
-        final String lastName;
-        final String dateOfBirth;
-        final String email;
-        final String userGroup;
-        if (currentUrl.startsWith(DATA_SELF_URL)) {
-            username = webDriver.findElement(By.id("tbxLoginname")).getAttribute("value");
-            firstName = webDriver.findElement(By.id("tbxVorname")).getAttribute("value");
-            lastName = webDriver.findElement(By.id("tbxNachname")).getAttribute("value");
-            dateOfBirth = webDriver.findElement(By.id("tbxGebDatum")).getAttribute("value");
-            email = webDriver.findElement(By.id("tbxPWvergessen")).getAttribute("value");
-            userGroup = webDriver.findElement(By.id("tbxKlasse")).getAttribute("value");
-
-            webDriver.get(IDENTIFICATION_SELF_URL);
-        } else if (currentUrl.startsWith(DATA_ADMIN_URL)) {
-            username = webDriver.findElement(By.id("tbxBenutzername")).getAttribute("value");
-            firstName = webDriver.findElement(By.id("tbxVorname")).getAttribute("value");
-            lastName = webDriver.findElement(By.id("tbxNachname")).getAttribute("value");
-            dateOfBirth = webDriver.findElement(By.id("tbxGebDatum")).getAttribute("value");
-            email = webDriver.findElement(By.id("tbxEmail")).getAttribute("value");
-            userGroup = new Select(webDriver.findElement(By.id("cboKlasse"))).getFirstSelectedOption().getText();
-
-            webDriver.get(IDENTIFICATION_ADMIN_URL);
-        } else {
-            throw new IllegalStateException("invalid page " + webDriver.getCurrentUrl());
-        }
-
-        seleniumService.waitUntilPageReady(webDriver);
-
-        final int rowCount = webDriver.findElements(By.xpath("//table[@id='tblIdent']/tbody/tr")).size();
+        final int rowCount = seleniumService.waitUntilElementsPresent(webDriver, By.xpath("//table[@id='tblIdent']/tbody/tr")).size();
         final Set<String> chipIds = new HashSet<>();
         for (int i = 1; i <= rowCount; i++) {
             final String chipId = webDriver.findElement(By.xpath("//table[@id='tblIdent']/tbody/tr[" + i + "]/td[2]")).getText();
@@ -338,23 +293,31 @@ public class MensaMaxService {
     }
 
     private String retrieveDialogSourceString(final WebDriver webDriver) {
-        final List<WebElement> frames = webDriver.findElements(By.className("iFrameHinweis"));
-        if (!frames.isEmpty()) {
-            final WebElement frame = frames.get(0);
-            webDriver.switchTo().frame(frame);
-            seleniumService.waitUntilPageReady(webDriver);
+        try {
+            final List<WebElement> frames = seleniumService.waitUntilElementsPresent(webDriver, By.className("iFrameHinweis"));
+            if (!frames.isEmpty()) {
+                final WebElement frame = frames.get(0);
+                webDriver.switchTo().frame(frame);
 
-            final List<WebElement> contentItems = webDriver.findElements(By.className("hinweis-dialog-content"));
-            if (!contentItems.isEmpty()) {
-                final WebElement contentItem = contentItems.get(0);
-                return contentItem.getText();
-            }
+                try {
+                    final List<WebElement> contentItems = seleniumService.waitUntilElementsPresent(webDriver, By.className("hinweis-dialog-content"));
+                    if (!contentItems.isEmpty()) {
+                        final WebElement contentItem = contentItems.get(0);
+                        return contentItem.getText();
+                    }
+                } catch (TimeoutException ignored) {
+                }
 
-            final List<WebElement> noticeItems = webDriver.findElements(By.className("TerminalHinweis"));
-            if (!noticeItems.isEmpty()) {
-                final WebElement noticeItem = noticeItems.get(0);
-                return noticeItem.getText();
+                try {
+                    final List<WebElement> noticeItems = seleniumService.waitUntilElementsPresent(webDriver, By.className("TerminalHinweis"));
+                    if (!noticeItems.isEmpty()) {
+                        final WebElement noticeItem = noticeItems.get(0);
+                        return noticeItem.getText();
+                    }
+                } catch (TimeoutException ignored) {
+                }
             }
+        } catch (final TimeoutException ignored) {
         }
 
         webDriver.switchTo().defaultContent();

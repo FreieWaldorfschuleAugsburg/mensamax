@@ -13,6 +13,11 @@ public final class InvalidUsernameException extends RuntimeException {
         this.username = username;
     }
 
+    public InvalidUsernameException(final String username, final Throwable cause) {
+        super(String.format("Could not find user with username %s", username), cause);
+        this.username = username;
+    }
+
     @ResponseErrorProperty
     public String getUsername() {
         return username;
