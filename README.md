@@ -1,4 +1,4 @@
-![unnamed](https://user-images.githubusercontent.com/38865194/203862609-4aaa0cb7-bd7d-4cfb-9ea7-c8d20b973771.png)
+<img src="https://user-images.githubusercontent.com/38865194/203862609-4aaa0cb7-bd7d-4cfb-9ea7-c8d20b973771.png" width="20%" height="20%">
 
 # Botched RESTful service for MensaMax services (#MensaHack)
 
