@@ -9,6 +9,8 @@ import de.waldorfaugsburg.mensamax.server.configuration.MensaMaxConfigurationPro
 import de.waldorfaugsburg.mensamax.server.exception.*;
 import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClient;
 import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClientStack;
+import de.waldorfaugsburg.mensamax.transaction.MensaMaxTransaction;
+import de.waldorfaugsburg.mensamax.transaction.TransactionStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.*;
@@ -17,6 +19,8 @@ import org.openqa.selenium.support.ui.Select;
 import org.springframework.stereotype.Service;
 
 import java.sql.Time;
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -135,7 +139,7 @@ public class MensaMaxService {
         }
     }
 
-    public void transaction(final String chip, final String kiosk, final long barcode, final int quantity) {
+    public MensaMaxTransaction transaction(final String transactionId, final String chip, final String kiosk, final long barcode, final int quantity) {
         Preconditions.checkNotNull(chip, "chip may not be null");
         Preconditions.checkArgument(quantity > 0, "quantity must be bigger than zero");
 
@@ -152,7 +156,6 @@ public class MensaMaxService {
 
         try {
             login(client);
-
             final String currentKiosk = client.getCurrentKiosk();
             if (currentKiosk == null || !currentKiosk.equals(kiosk)) {
                 webDriver.get(KIOSK_SELECTOR_URL);
@@ -222,6 +225,7 @@ public class MensaMaxService {
         } finally {
             clientStack.returnClient(client);
         }
+        return new MensaMaxTransaction(transactionId, getUserByChip(chip), barcode, TransactionStatus.SUCCESS, LocalDateTime.now());
     }
 
     private void login(final SeleniumClient client) throws LoginException {
