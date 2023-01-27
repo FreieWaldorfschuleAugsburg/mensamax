@@ -3,16 +3,15 @@ package de.waldorfaugsburg.mensamax.server.service;
 import de.waldorfaugsburg.mensamax.server.configuration.SeleniumConfigurationProperties;
 import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClient;
 import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClientStack;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.*;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
-import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,7 +27,6 @@ import java.util.function.Function;
 @Service
 @Slf4j
 public class SeleniumService {
-
     private final Set<SeleniumClientStack> stacks = new HashSet<>();
     private final SeleniumConfigurationProperties properties;
     private int instanceId;

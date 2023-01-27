@@ -1,11 +1,9 @@
 package de.waldorfaugsburg.mensamax.server.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter;
 
-import javax.servlet.http.HttpServletRequest;
-
 public class ApiKeyAuthFilter extends AbstractPreAuthenticatedProcessingFilter {
-
     private final String headerName;
 
     public ApiKeyAuthFilter(final String headerName) {

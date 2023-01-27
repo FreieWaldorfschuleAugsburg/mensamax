@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class MensaMaxController {
-
     private final MensaMaxService service;
     private final TransactionService transactionService;
 
@@ -32,11 +31,7 @@ public class MensaMaxController {
     }
 
     @PostMapping("/transaction")
-    public ResponseEntity<Void> transaction(@RequestParam("chip") final String chip,
-                                            @RequestParam("kiosk") final String kiosk,
-                                            @RequestParam("barcode") final long barcode,
-                                            @RequestParam("quantity") final int quantity,
-                                            @RequestParam("id") final String transactionId) {
+    public ResponseEntity<Void> transaction(@RequestParam("chip") final String chip, @RequestParam("kiosk") final String kiosk, @RequestParam("barcode") final long barcode, @RequestParam("quantity") final int quantity, @RequestParam("id") final String transactionId) {
         MensaMaxTransaction transaction = service.transaction(transactionId, chip, kiosk, barcode, quantity);
         transactionService.logTransaction(transaction, chip);
         return new ResponseEntity<>(HttpStatus.OK);
@@ -48,6 +43,4 @@ public class MensaMaxController {
         return new ResponseEntity<>(transaction, HttpStatus.OK);
 
     }
-
-
 }

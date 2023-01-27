@@ -5,7 +5,6 @@ import org.openqa.selenium.firefox.FirefoxDriver;
 import java.io.Closeable;
 
 public final class SeleniumClient implements Closeable {
-
     private final int instanceId;
     private final FirefoxDriver webDriver;
 

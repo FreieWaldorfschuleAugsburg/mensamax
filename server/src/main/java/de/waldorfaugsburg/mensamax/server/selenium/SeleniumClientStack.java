@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public record SeleniumClientStack(BlockingQueue<SeleniumClient> clients) implements Closeable {
-
     public SeleniumClient obtainClient() {
         try {
             final SeleniumClient client = clients.poll(5, TimeUnit.SECONDS);

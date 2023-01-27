@@ -19,7 +19,6 @@ import java.util.Collections;
 @SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class, JacksonAutoConfiguration.class})
 @EnableConfigurationProperties({SeleniumConfigurationProperties.class, MensaMaxConfigurationProperties.class})
 public class MensaMaxServerApplication {
-
     public MensaMaxServerApplication() {
 
     }
@@ -30,10 +29,6 @@ public class MensaMaxServerApplication {
 
     @Bean
     public OpenAPI openAPI() {
-        return new OpenAPI().info(new Info().title("MensaMax-API of the Freie Waldorfschule Augsburg")
-                        .version(getClass().getPackage().getImplementationVersion())
-                        .license(new License().name("MIT License").url("https://opensource.org/licenses/MIT"))
-                        .contact(new Contact().name("GitHub").url("https://github.com/FreieWaldorfschuleAugsburg/mensamax")))
-                .servers(Collections.singletonList(new Server().url("https://mensamax.waldorf-augsburg.de/")));
+        return new OpenAPI().info(new Info().title("MensaMax-API of the Freie Waldorfschule Augsburg").version(getClass().getPackage().getImplementationVersion()).license(new License().name("MIT License").url("https://opensource.org/licenses/MIT")).contact(new Contact().name("GitHub").url("https://github.com/FreieWaldorfschuleAugsburg/mensamax"))).servers(Collections.singletonList(new Server().url("https://mensamax.waldorf-augsburg.de/")));
     }
 }

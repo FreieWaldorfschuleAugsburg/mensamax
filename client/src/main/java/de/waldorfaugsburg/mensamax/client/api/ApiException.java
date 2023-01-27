@@ -4,7 +4,6 @@ import lombok.Getter;
 
 @Getter
 public final class ApiException extends RuntimeException {
-
     private int responseCode;
     private ApiError error;
 
@@ -20,9 +19,6 @@ public final class ApiException extends RuntimeException {
 
     @Override
     public String toString() {
-        return "ApiException{" +
-                "responseCode=" + responseCode +
-                ", error=" + error +
-                '}';
+        return "ApiException{" + "responseCode=" + responseCode + ", error=" + error + '}';
     }
 }

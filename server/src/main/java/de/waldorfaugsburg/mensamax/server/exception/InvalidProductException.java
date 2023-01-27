@@ -5,7 +5,6 @@ import io.github.wimdeblauwe.errorhandlingspringbootstarter.ResponseErrorPropert
 
 @ResponseErrorCode("INVALID_PRODUCT")
 public final class InvalidProductException extends RuntimeException {
-
     private final long productBarcode;
     private final String kiosk;
 

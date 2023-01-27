@@ -5,7 +5,6 @@ import io.github.wimdeblauwe.errorhandlingspringbootstarter.ResponseErrorPropert
 
 @ResponseErrorCode("NO_STOCK")
 public final class NoStockException extends RuntimeException {
-
     private final long productBarcode;
     private final String kiosk;
 
