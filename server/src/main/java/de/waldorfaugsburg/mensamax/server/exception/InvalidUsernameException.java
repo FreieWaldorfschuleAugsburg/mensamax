@@ -5,7 +5,6 @@ import io.github.wimdeblauwe.errorhandlingspringbootstarter.ResponseErrorPropert
 
 @ResponseErrorCode("INVALID_USERNAME")
 public final class InvalidUsernameException extends RuntimeException {
-
     private final String username;
 
     public InvalidUsernameException(final String username) {

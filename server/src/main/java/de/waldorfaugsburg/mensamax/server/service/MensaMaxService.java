@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 @Slf4j
 public class MensaMaxService {
-
     private static final String URL = "https://mensastadt.de";
     private static final String LOGIN_URL = URL + "/?projekt=%s&einrichtung=%s&user=%s";
     private static final String INDEX_URL = URL + "/mensamax/index.aspx";

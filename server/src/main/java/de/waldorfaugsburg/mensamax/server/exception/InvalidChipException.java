@@ -5,7 +5,6 @@ import io.github.wimdeblauwe.errorhandlingspringbootstarter.ResponseErrorPropert
 
 @ResponseErrorCode("INVALID_CHIP")
 public final class InvalidChipException extends RuntimeException {
-
     private final String chip;
 
     public InvalidChipException(final String chip) {

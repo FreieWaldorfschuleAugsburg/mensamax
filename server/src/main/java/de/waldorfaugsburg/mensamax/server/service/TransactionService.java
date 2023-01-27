@@ -54,19 +54,12 @@ public class TransactionService {
 
     private Set<String> getDuplicateChipIds(Collection<String> chipIds) {
         Set<String> uniqueIds = new HashSet<>();
-        return chipIds.stream()
-                .filter(chipId -> !uniqueIds.add(chipId))
-                .collect(Collectors.toSet());
+        return chipIds.stream().filter(chipId -> !uniqueIds.add(chipId)).collect(Collectors.toSet());
     }
 
     private Set<MensaMaxTransaction> getTransactionsForChipId(String chipId) {
         Set<MensaMaxTransaction> transactions = new HashSet<>();
-        Stream<String> transactionStream = userTransactionCache
-                .asMap()
-                .entrySet()
-                .stream()
-                .filter(entry -> chipId.equals(entry.getValue()))
-                .map(Map.Entry::getKey);
+        Stream<String> transactionStream = userTransactionCache.asMap().entrySet().stream().filter(entry -> chipId.equals(entry.getValue())).map(Map.Entry::getKey);
 
         transactionStream.forEach(transactionId -> {
             MensaMaxTransaction transaction = transactionCache.getIfPresent(transactionId);
@@ -74,6 +67,4 @@ public class TransactionService {
         });
         return transactions;
     }
-
-
 }
