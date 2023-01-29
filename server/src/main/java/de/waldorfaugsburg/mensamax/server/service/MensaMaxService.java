@@ -176,7 +176,7 @@ public class MensaMaxService {
         }
 
         // Save transaction for further analysis
-        transactionService.saveTransaction(new MensaMaxTransaction(id, chip, barcode, LocalDateTime.now()));
+        transactionService.saveTransaction(new MensaMaxTransaction(id, chip, barcode, System.currentTimeMillis()));
     }
 
     private void login(final SeleniumClient client) throws LoginException {

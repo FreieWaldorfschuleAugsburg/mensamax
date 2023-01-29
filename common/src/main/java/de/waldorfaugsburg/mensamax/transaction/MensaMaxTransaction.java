@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.ToString;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @AllArgsConstructor
@@ -14,5 +13,5 @@ public final class MensaMaxTransaction {
     private UUID id;
     private String chip;
     private long barcode;
-    private LocalDateTime date;
+    private long timestamp;
 }

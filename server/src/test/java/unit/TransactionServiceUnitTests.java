@@ -6,7 +6,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
@@ -37,6 +36,6 @@ public class TransactionServiceUnitTests {
     }
 
     private MensaMaxTransaction createTransaction() {
-        return new MensaMaxTransaction(UUID.randomUUID(), "ABCDEFGHIJ", 1337, LocalDateTime.now());
+        return new MensaMaxTransaction(UUID.randomUUID(), "ABCDEFGHIJ", 1337, System.currentTimeMillis());
     }
 }
