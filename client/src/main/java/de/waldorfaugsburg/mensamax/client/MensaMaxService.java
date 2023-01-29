@@ -7,6 +7,8 @@ import retrofit2.http.POST;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
+import java.util.UUID;
+
 public interface MensaMaxService {
     @GET("user/chip/{chip}")
     Call<MensaMaxUser> getUserByChip(@Path("chip") String chip);
@@ -15,5 +17,5 @@ public interface MensaMaxService {
     Call<MensaMaxUser> getUserByUsername(@Path("username") String username);
 
     @POST("transaction")
-    Call<Void> transaction(@Query("chip") String chip, @Query("kiosk") String kiosk, @Query("barcode") long barcode, @Query("quantity") int quantity);
+    Call<Void> transaction(@Query("id") UUID id, @Query("chip") String chip, @Query("kiosk") String kiosk, @Query("barcode") long barcode, @Query("quantity") int quantity);
 }

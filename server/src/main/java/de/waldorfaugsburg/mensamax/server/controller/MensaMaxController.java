@@ -8,39 +8,40 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.UUID;
+
 @RestController
 public class MensaMaxController {
-    private final MensaMaxService service;
+    private final MensaMaxService mensaMaxService;
     private final TransactionService transactionService;
 
     public MensaMaxController(final MensaMaxService service, final TransactionService transactionService) {
         this.transactionService = transactionService;
-        this.service = service;
+        this.mensaMaxService = service;
     }
 
-    @GetMapping("/user/chip/{chip}")
+    @GetMapping("/user/{chip}")
     public ResponseEntity<MensaMaxUser> getUserByChipId(@PathVariable("chip") final String chip) {
-        final MensaMaxUser user = service.getUserByChip(chip);
-        return new ResponseEntity<>(user, HttpStatus.OK);
-    }
-
-    @GetMapping("/user/username/{username}")
-    public ResponseEntity<MensaMaxUser> getUserByUsername(@PathVariable("username") final String username) {
-        final MensaMaxUser user = service.getUserByUsername(username);
+        final MensaMaxUser user = mensaMaxService.getUserByChip(chip);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
     @PostMapping("/transaction")
-    public ResponseEntity<Void> transaction(@RequestParam("chip") final String chip, @RequestParam("kiosk") final String kiosk, @RequestParam("barcode") final long barcode, @RequestParam("quantity") final int quantity, @RequestParam("id") final String transactionId) {
-        MensaMaxTransaction transaction = service.transaction(transactionId, chip, kiosk, barcode, quantity);
-        transactionService.logTransaction(transaction, chip);
+    public ResponseEntity<Void> transaction(@RequestParam("id") final UUID id, @RequestParam("chip") final String chip, @RequestParam("kiosk") final String kiosk, @RequestParam("barcode") final long barcode, @RequestParam("quantity") final int quantity) {
+        mensaMaxService.transaction(id, chip, kiosk, barcode, quantity);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @GetMapping("/transaction/{id}/status")
-    public ResponseEntity<MensaMaxTransaction> getTransactionByTransactionId(@PathVariable("id") final String transactionId) {
-        final MensaMaxTransaction transaction = transactionService.getTransaction(transactionId);
+    @GetMapping("/transaction/{chip}/last")
+    public ResponseEntity<MensaMaxTransaction> getLastTransactionByChip(@PathVariable("chip") final String chip) {
+        final MensaMaxTransaction transaction = transactionService.getLastTransaction(chip);
         return new ResponseEntity<>(transaction, HttpStatus.OK);
+    }
 
+    @GetMapping("/transaction/{chip}/all")
+    public ResponseEntity<List<MensaMaxTransaction>> getTransactionsByChip(@PathVariable("chip") final String chip) {
+        final List<MensaMaxTransaction> transactions = transactionService.getTransactions(chip);
+        return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
 }

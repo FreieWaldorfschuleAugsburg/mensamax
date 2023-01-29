@@ -96,7 +96,7 @@ public class SeleniumService {
         options.setHeadless(true);
 
         instanceId++;
-        FirefoxDriver firefoxDriver = new FirefoxDriver(options);
+        final FirefoxDriver firefoxDriver = new FirefoxDriver(options);
         firefoxDriver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(5));
         return firefoxDriver;
     }
