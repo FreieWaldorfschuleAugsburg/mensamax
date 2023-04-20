@@ -10,7 +10,6 @@ import de.waldorfaugsburg.mensamax.server.exception.*;
 import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClient;
 import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClientStack;
 import de.waldorfaugsburg.mensamax.transaction.MensaMaxTransaction;
-import de.waldorfaugsburg.mensamax.transaction.TransactionStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.*;
@@ -18,12 +17,8 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.springframework.stereotype.Service;
 
-import java.sql.Time;
 import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -37,23 +32,12 @@ public class MensaMaxService {
     private static final String KIOSK_BARCODE_URL = URL + "/mensamax/Kiosk/Verkauf/VerkaufForm.aspx";
     private static final String SEARCH_URL = URL + "/mensamax/Formulare/Person/PersonSucheForm.aspx";
     private static final String DATA_URL = URL + "/mensamax/Formulare/Person/PersonDatenForm.aspx";
-    private static final String IDENTIFICATION_URL = URL + "/mensamax/Formulare/Person/PersonIdentifikationForm.aspx";
 
-    private final LoadingCache<String, MensaMaxUser> chipUserCache = CacheBuilder.newBuilder().build(new CacheLoader<>() {
+    private final LoadingCache<String, MensaMaxUser> userCache = CacheBuilder.newBuilder().build(new CacheLoader<>() {
         @Override
         public @NotNull MensaMaxUser load(@NotNull final String chip) throws InvalidChipException {
             final MensaMaxUser response = requestUserByChip(chip);
             if (response == null) throw new InvalidChipException(chip);
-
-            return response;
-        }
-    });
-
-    private final LoadingCache<String, MensaMaxUser> usernameUserCache = CacheBuilder.newBuilder().build(new CacheLoader<>() {
-        @Override
-        public @NotNull MensaMaxUser load(@NotNull final String username) throws InvalidUsernameException {
-            final MensaMaxUser response = requestUserByUsername(username);
-            if (response == null) throw new InvalidUsernameException(username);
 
             return response;
         }
@@ -64,54 +48,20 @@ public class MensaMaxService {
     private final SeleniumService seleniumService;
     private final SeleniumClientStack clientStack;
 
-    public MensaMaxService(final MensaMaxConfigurationProperties properties, final SeleniumService seleniumService) {
+    private final TransactionService transactionService;
+
+    public MensaMaxService(final MensaMaxConfigurationProperties properties, final SeleniumService seleniumService, final TransactionService transactionService) {
         this.properties = properties;
         this.seleniumService = seleniumService;
+        this.transactionService = transactionService;
         this.clientStack = seleniumService.reserveClients(properties.clientCount(), this::login);
-    }
-
-    public MensaMaxUser getUserByUsername(final String username) throws InvalidUsernameException {
-        try {
-            final MensaMaxUser user = usernameUserCache.get(username);
-
-            // Update user in the other cache
-            user.getChipIds().forEach(chipId -> chipUserCache.put(chipId, user));
-            return user;
-        } catch (final Exception e) {
-            throw (RuntimeException) e.getCause();
-        }
     }
 
     public MensaMaxUser getUserByChip(final String chip) throws InvalidChipException {
         try {
-            final MensaMaxUser user = chipUserCache.get(chip);
-
-            // Update user in the other cache
-            usernameUserCache.put(user.getUsername(), user);
-            return user;
+            return userCache.get(chip);
         } catch (final Exception e) {
             throw (RuntimeException) e.getCause();
-        }
-    }
-
-    public MensaMaxUser requestUserByUsername(final String username) {
-        Preconditions.checkNotNull(username, "username may not be null");
-
-        final SeleniumClient client = clientStack.obtainClient();
-        final WebDriver webDriver = client.getWebDriver();
-        try {
-            login(client);
-            webDriver.get(SEARCH_URL);
-
-            seleniumService.clearAndSendKeys(webDriver, By.id("tbloginname"), username, Keys.ENTER);
-
-            log.info("Requested user by username '{}'", username);
-            return readUserData(webDriver);
-        } catch (final Exception e) {
-            log.error("An error occurred while requesting user by username {}", username, e);
-            throw new InvalidUsernameException(username, e);
-        } finally {
-            clientStack.returnClient(client);
         }
     }
 
@@ -138,7 +88,7 @@ public class MensaMaxService {
         }
     }
 
-    public MensaMaxTransaction transaction(final String transactionId, final String chip, final String kiosk, final long barcode, final int quantity) {
+    public void transaction(final UUID id, final String chip, final String kiosk, final long barcode, final int quantity) {
         Preconditions.checkNotNull(chip, "chip may not be null");
         Preconditions.checkArgument(quantity > 0, "quantity must be bigger than zero");
 
@@ -224,7 +174,9 @@ public class MensaMaxService {
         } finally {
             clientStack.returnClient(client);
         }
-        return new MensaMaxTransaction(transactionId, getUserByChip(chip), barcode, TransactionStatus.SUCCESS, LocalDateTime.now());
+
+        // Save transaction for further analysis
+        transactionService.saveTransaction(new MensaMaxTransaction(id, chip, barcode, System.currentTimeMillis()));
     }
 
     private void login(final SeleniumClient client) throws LoginException {
@@ -283,16 +235,7 @@ public class MensaMaxService {
         final String email = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxEmail")).getAttribute("value");
         final String userGroup = new Select(seleniumService.waitUntilElementPresent(webDriver, By.id("cboKlasse"))).getFirstSelectedOption().getText();
 
-        webDriver.get(IDENTIFICATION_URL);
-
-        final int rowCount = seleniumService.waitUntilElementsPresent(webDriver, By.xpath("//table[@id='tblIdent']/tbody/tr")).size();
-        final Set<String> chipIds = new HashSet<>();
-        for (int i = 1; i <= rowCount; i++) {
-            final String chipId = webDriver.findElement(By.xpath("//table[@id='tblIdent']/tbody/tr[" + i + "]/td[2]")).getText();
-            chipIds.add(chipId);
-        }
-
-        return new MensaMaxUser(username, firstName, lastName, email, dateOfBirth, userGroup, chipIds);
+        return new MensaMaxUser(username, firstName, lastName, email, dateOfBirth, userGroup);
     }
 
     private String retrieveDialogSourceString(final WebDriver webDriver) {

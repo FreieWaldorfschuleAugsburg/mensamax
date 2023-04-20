@@ -24,7 +24,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>3.0.4</version>
+                <version>3.0.5</version>
                 <executions>
                     <execution>
                         <goals>
@@ -57,7 +57,7 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.0.4</version>
+                <version>3.0.5</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -111,7 +111,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-ui</artifactId>
-            <version>1.6.14</version>
+            <version>1.6.15</version>
         </dependency>
 
         <dependency>

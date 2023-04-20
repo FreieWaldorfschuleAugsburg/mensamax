@@ -16,5 +16,4 @@ public final class MensaMaxUser {
     private String email;
     private String dateOfBirth;
     private String userGroup;
-    private Set<String> chipIds;
 }

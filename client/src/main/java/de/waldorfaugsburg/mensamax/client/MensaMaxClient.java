@@ -13,6 +13,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.UUID;
 
 public class MensaMaxClient {
 
@@ -52,7 +53,7 @@ public class MensaMaxClient {
     }
 
     public void transaction(final String chipId, final String kiosk, final long productBarcode, final int quantity) throws ApiException {
-        final Call<Void> call = service.transaction(chipId, kiosk, productBarcode, quantity);
+        final Call<Void> call = service.transaction(UUID.randomUUID(), chipId, kiosk, productBarcode, quantity);
         handleCall(call);
     }
 
