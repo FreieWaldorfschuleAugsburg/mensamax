@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -24,7 +25,15 @@ public class AuthConfiguration {
         filter.setAuthenticationManager(new ApiKeyAuthManager(apiKey));
 
         final ApiKeyAuthEntryPoint entryPoint = new ApiKeyAuthEntryPoint();
-        httpSecurity.cors().and().csrf().disable().authorizeHttpRequests().requestMatchers("/").permitAll().requestMatchers("/api-docs/**").permitAll().requestMatchers("/swagger-ui/**").permitAll().anyRequest().authenticated().and().addFilter(filter).exceptionHandling().authenticationEntryPoint(entryPoint).and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+
+        httpSecurity.cors(AbstractHttpConfigurer::disable);
+        httpSecurity.csrf(AbstractHttpConfigurer::disable);
+
+        httpSecurity.authorizeHttpRequests((auth) -> auth.requestMatchers("/").permitAll().requestMatchers("/api-docs/**").permitAll().requestMatchers("/swagger-ui/**").permitAll().requestMatchers("/error").permitAll().anyRequest().authenticated());
+        httpSecurity.addFilter(filter);
+        httpSecurity.exceptionHandling(handler -> handler.authenticationEntryPoint(entryPoint));
+        httpSecurity.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
         return httpSecurity.build();
     }
 }
