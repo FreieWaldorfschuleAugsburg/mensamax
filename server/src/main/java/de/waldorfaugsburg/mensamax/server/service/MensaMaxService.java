@@ -11,12 +11,21 @@ import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClient;
 import de.waldorfaugsburg.mensamax.server.selenium.SeleniumClientStack;
 import de.waldorfaugsburg.mensamax.transaction.MensaMaxTransaction;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.DuplicateHeaderMode;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +41,9 @@ public class MensaMaxService {
     private static final String KIOSK_BARCODE_URL = URL + "/mensamax/Kiosk/Verkauf/VerkaufForm.aspx";
     private static final String SEARCH_URL = URL + "/mensamax/Formulare/Person/PersonSucheForm.aspx";
     private static final String DATA_URL = URL + "/mensamax/Formulare/Person/PersonDatenForm.aspx";
+
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+    private static final String[] CSV_HEADERS = {"id", "chip", "kiosk", "barcode", "quantity"};
 
     private final LoadingCache<String, MensaMaxUser> userCache = CacheBuilder.newBuilder().build(new CacheLoader<>() {
         @Override
@@ -92,6 +104,7 @@ public class MensaMaxService {
         Preconditions.checkNotNull(chip, "chip may not be null");
         Preconditions.checkArgument(quantity > 0, "quantity must be bigger than zero");
 
+        // Check if product is restricted
         if (properties.restrictedProducts().contains(barcode)) {
             final MensaMaxUser user = getUserByChip(chip);
             final Set<String> restrictedRoles = properties.restrictedRoles().get(kiosk);
@@ -100,9 +113,20 @@ public class MensaMaxService {
             }
         }
 
+        // Check whether server runs in online mode
+        if (properties.online()) {
+            onlineTransaction(id, chip, kiosk, barcode, quantity);
+        } else {
+            offlineTransaction(id, chip, kiosk, barcode, quantity);
+        }
+
+        // Save transaction for further analysis
+        transactionService.saveTransaction(new MensaMaxTransaction(id, chip, barcode, System.currentTimeMillis()));
+    }
+
+    private void onlineTransaction(final UUID id, final String chip, final String kiosk, final long barcode, final int quantity) {
         final SeleniumClient client = clientStack.obtainClient();
         final WebDriver webDriver = client.getWebDriver();
-
         try {
             login(client);
             final String currentKiosk = client.getCurrentKiosk();
@@ -174,9 +198,30 @@ public class MensaMaxService {
         } finally {
             clientStack.returnClient(client);
         }
+    }
 
-        // Save transaction for further analysis
-        transactionService.saveTransaction(new MensaMaxTransaction(id, chip, barcode, System.currentTimeMillis()));
+    private void offlineTransaction(final UUID id, final String chip, final String kiosk, final long barcode, final int quantity) {
+        try {
+            boolean skipHeader = true;
+            final File file = new File("transactions_" + DATE_FORMAT.format(new Date()) + ".csv");
+            if (!file.exists()) {
+                skipHeader = false;
+                Files.createFile(file.toPath());
+            }
+
+            try (final FileWriter writer = new FileWriter(file, true)) {
+                final CSVFormat format = CSVFormat.DEFAULT.builder()
+                        .setHeader(CSV_HEADERS)
+                        .setSkipHeaderRecord(skipHeader)
+                        .build();
+
+                try (final CSVPrinter printer = new CSVPrinter(writer, format)) {
+                    printer.printRecord(id, chip, kiosk, barcode, quantity);
+                }
+            }
+        } catch (final IOException e) {
+            log.error("An error occurred while saving transaction", e);
+        }
     }
 
     private void login(final SeleniumClient client) throws LoginException {

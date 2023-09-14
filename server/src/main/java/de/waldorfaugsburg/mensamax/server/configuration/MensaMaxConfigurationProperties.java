@@ -9,5 +9,5 @@ import java.util.Set;
 public record MensaMaxConfigurationProperties(String projectId, String facilityId,
                                               String username, String password,
                                               int clientCount, Map<String, Set<String>> restrictedRoles,
-                                              Set<Long> restrictedProducts) {
+                                              Set<Long> restrictedProducts, boolean online) {
 }
