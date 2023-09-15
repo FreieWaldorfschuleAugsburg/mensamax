@@ -43,7 +43,7 @@ public class MensaMaxService {
     private static final String DATA_URL = URL + "/mensamax/Formulare/Person/PersonDatenForm.aspx";
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
-    private static final String[] CSV_HEADERS = {"id", "chip", "kiosk", "barcode", "quantity"};
+    private static final String[] CSV_HEADERS = {"id", "datetime", "chip", "kiosk", "barcode", "quantity"};
 
     private final LoadingCache<String, MensaMaxUser> userCache = CacheBuilder.newBuilder().build(new CacheLoader<>() {
         @Override
@@ -216,7 +216,7 @@ public class MensaMaxService {
                         .build();
 
                 try (final CSVPrinter printer = new CSVPrinter(writer, format)) {
-                    printer.printRecord(id, chip, kiosk, barcode, quantity);
+                    printer.printRecord(id, System.currentTimeMillis(), chip, kiosk, barcode, quantity);
                 }
             }
         } catch (final IOException e) {
