@@ -58,7 +58,7 @@ public class MensaMaxService {
     private final MensaMaxConfigurationProperties properties;
 
     private final SeleniumService seleniumService;
-    private final SeleniumClientStack clientStack;
+    private SeleniumClientStack clientStack;
 
     private final TransactionService transactionService;
 
@@ -66,7 +66,9 @@ public class MensaMaxService {
         this.properties = properties;
         this.seleniumService = seleniumService;
         this.transactionService = transactionService;
-        this.clientStack = seleniumService.reserveClients(properties.clientCount(), this::login);
+        if (properties.online()) {
+            this.clientStack = seleniumService.reserveClients(properties.clientCount(), this::login);
+        }
     }
 
     public MensaMaxUser getUserByChip(final String chip) throws InvalidChipException {

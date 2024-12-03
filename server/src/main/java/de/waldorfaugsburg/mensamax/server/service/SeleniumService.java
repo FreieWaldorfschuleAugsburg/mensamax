@@ -93,7 +93,7 @@ public class SeleniumService {
 
         final FirefoxOptions options = new FirefoxOptions();
         options.addArguments("-profile", userDir.getAbsolutePath());
-        options.setHeadless(true);
+        options.addArguments("--headless");
 
         instanceId++;
         final FirefoxDriver firefoxDriver = new FirefoxDriver(options);
