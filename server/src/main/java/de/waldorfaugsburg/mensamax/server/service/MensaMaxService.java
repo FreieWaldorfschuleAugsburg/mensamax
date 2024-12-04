@@ -106,17 +106,17 @@ public class MensaMaxService {
         Preconditions.checkNotNull(chip, "chip may not be null");
         Preconditions.checkArgument(quantity > 0, "quantity must be bigger than zero");
 
-        // Check if product is restricted
-        if (properties.restrictedProducts().contains(barcode)) {
-            final MensaMaxUser user = getUserByChip(chip);
-            final Set<String> restrictedRoles = properties.restrictedRoles().get(kiosk);
-            if (restrictedRoles != null && restrictedRoles.contains(user.getUserGroup())) {
-                throw new ProductRestrictedException();
-            }
-        }
-
         // Check whether server runs in online mode
         if (properties.online()) {
+            // Check if product is restricted
+            if (properties.restrictedProducts().contains(barcode)) {
+                final MensaMaxUser user = getUserByChip(chip);
+                final Set<String> restrictedRoles = properties.restrictedRoles().get(kiosk);
+                if (restrictedRoles != null && restrictedRoles.contains(user.getUserGroup())) {
+                    throw new ProductRestrictedException();
+                }
+            }
+
             onlineTransaction(id, chip, kiosk, barcode, quantity);
         } else {
             offlineTransaction(id, chip, kiosk, barcode, quantity);
@@ -221,6 +221,7 @@ public class MensaMaxService {
                     printer.printRecord(id, System.currentTimeMillis(), chip, kiosk, barcode, quantity);
                 }
             }
+            log.info("Processed offline transaction for product '{}' by chip id '{}'", barcode, chip);
         } catch (final IOException e) {
             log.error("An error occurred while saving transaction", e);
         }
