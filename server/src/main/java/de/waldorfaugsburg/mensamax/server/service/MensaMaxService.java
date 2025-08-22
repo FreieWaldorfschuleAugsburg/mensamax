@@ -13,7 +13,6 @@ import de.waldorfaugsburg.mensamax.transaction.MensaMaxTransaction;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.DuplicateHeaderMode;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -23,10 +22,8 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -117,7 +114,7 @@ public class MensaMaxService {
                 }
             }
 
-            onlineTransaction(id, chip, kiosk, barcode, quantity);
+            onlineTransaction(chip, kiosk, barcode, quantity);
         } else {
             offlineTransaction(id, chip, kiosk, barcode, quantity);
         }
@@ -126,7 +123,7 @@ public class MensaMaxService {
         transactionService.saveTransaction(new MensaMaxTransaction(id, chip, barcode, System.currentTimeMillis()));
     }
 
-    private void onlineTransaction(final UUID id, final String chip, final String kiosk, final long barcode, final int quantity) {
+    private void onlineTransaction(final String chip, final String kiosk, final long barcode, final int quantity) {
         final SeleniumClient client = clientStack.obtainClient();
         final WebDriver webDriver = client.getWebDriver();
         try {
