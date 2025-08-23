@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public final class MensaMaxChipReader implements AutoCloseable {
+
     private static final Map<Integer, Integer> KEY_MAP = new HashMap<>();
 
     static {

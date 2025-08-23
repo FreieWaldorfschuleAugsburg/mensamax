@@ -12,6 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 public class AuthConfiguration {
+
     private static final String API_KEY_HEADER_NAME = "X-API-KEY";
     private final String apiKey;
 

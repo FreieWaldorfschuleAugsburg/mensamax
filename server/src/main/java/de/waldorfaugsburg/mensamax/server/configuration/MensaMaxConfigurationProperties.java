@@ -8,6 +8,5 @@ import java.util.Set;
 @ConfigurationProperties("mensamax")
 public record MensaMaxConfigurationProperties(String projectId, String facilityId,
                                               String username, String password,
-                                              int clientCount, Map<String, Set<String>> restrictedRoles,
-                                              Set<Long> restrictedProducts, boolean online) {
+                                              int clientCount) {
 }

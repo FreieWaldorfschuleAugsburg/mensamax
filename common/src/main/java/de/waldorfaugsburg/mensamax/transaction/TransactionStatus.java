@@ -1,6 +1,8 @@
 package de.waldorfaugsburg.mensamax.transaction;
 
 public enum TransactionStatus {
+
+    PENDING,
     SUCCESS,
-    FAIL,
+    FAILED,
 }

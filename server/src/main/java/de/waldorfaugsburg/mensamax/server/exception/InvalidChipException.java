@@ -2,9 +2,13 @@ package de.waldorfaugsburg.mensamax.server.exception;
 
 import io.github.wimdeblauwe.errorhandlingspringbootstarter.ResponseErrorCode;
 import io.github.wimdeblauwe.errorhandlingspringbootstarter.ResponseErrorProperty;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ResponseErrorCode("INVALID_CHIP")
+@ResponseStatus(HttpStatus.NOT_FOUND)
 public final class InvalidChipException extends RuntimeException {
+
     private final String chip;
 
     public InvalidChipException(final String chip) {

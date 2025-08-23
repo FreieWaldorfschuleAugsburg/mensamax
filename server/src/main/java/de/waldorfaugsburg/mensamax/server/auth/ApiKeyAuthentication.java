@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 public class ApiKeyAuthentication implements Authentication {
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.emptySet();

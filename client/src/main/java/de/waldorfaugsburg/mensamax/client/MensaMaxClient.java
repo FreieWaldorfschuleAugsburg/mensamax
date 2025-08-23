@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import de.waldorfaugsburg.mensamax.client.api.ApiError;
 import de.waldorfaugsburg.mensamax.client.api.ApiException;
 import de.waldorfaugsburg.mensamax.common.MensaMaxUser;
+import de.waldorfaugsburg.mensamax.transaction.MensaMaxTransaction;
+import de.waldorfaugsburg.mensamax.transaction.TransactionStatus;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -13,7 +15,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.UUID;
+import java.util.List;
 
 public class MensaMaxClient {
 
@@ -25,35 +27,61 @@ public class MensaMaxClient {
     private static final int SERVICE_UNAVAILABLE_CODE = 503;
     private static final Duration TIMEOUT_DURATION = Duration.ofMinutes(1);
 
-    private final MensaMaxService service;
+    private final UserService userService;
+    private final TransactionService transactionService;
 
     public MensaMaxClient(final String endpointUrl, final String apiKey) {
+
         final OkHttpClient.Builder builder = new OkHttpClient.Builder();
         builder.addInterceptor(chain -> chain.proceed(chain.request().newBuilder().addHeader("X-API-KEY", apiKey).build())).callTimeout(TIMEOUT_DURATION).connectTimeout(TIMEOUT_DURATION).readTimeout(TIMEOUT_DURATION).writeTimeout(TIMEOUT_DURATION);
         final OkHttpClient client = builder.build();
         final Retrofit retrofit = new Retrofit.Builder().baseUrl(endpointUrl).addConverterFactory(GsonConverterFactory.create(GSON)).client(client).build();
 
-        this.service = retrofit.create(MensaMaxService.class);
+        this.userService = retrofit.create(UserService.class);
+        this.transactionService = retrofit.create(TransactionService.class);
     }
 
-    public MensaMaxUser getUserByChipId(final String chipId) throws ApiException {
-        final Call<MensaMaxUser> call = service.getUserByChip(chipId);
+    public MensaMaxUser getUserByEmployeeId(final int employeeId) throws ApiException {
+        final Call<MensaMaxUser> call = userService.getUserByEmployeeId(employeeId);
         final Response<MensaMaxUser> response = handleCall(call);
         return response.body();
     }
 
     public MensaMaxUser getUserByUsername(final String username) throws ApiException {
-        final Call<MensaMaxUser> call = service.getUserByUsername(username);
+        final Call<MensaMaxUser> call = userService.getUserByUsername(username);
         final Response<MensaMaxUser> response = handleCall(call);
         return response.body();
     }
 
-    public void transaction(final String chipId, final String kiosk, final long productBarcode) {
+    public void transaction(final String chipId, final String kiosk, final long productBarcode) throws ApiException {
         transaction(chipId, kiosk, productBarcode, 1);
     }
 
     public void transaction(final String chipId, final String kiosk, final long productBarcode, final int quantity) throws ApiException {
-        final Call<Void> call = service.transaction(UUID.randomUUID(), chipId, kiosk, productBarcode, quantity);
+        final Call<Void> call = transactionService.transaction(chipId, kiosk, productBarcode, quantity);
+        handleCall(call);
+    }
+
+    public List<MensaMaxTransaction> getAllTransactions() throws ApiException {
+        final Call<List<MensaMaxTransaction>> call = transactionService.getAllTransactions();
+        final Response<List<MensaMaxTransaction>> response = handleCall(call);
+        return response.body();
+    }
+
+    public List<MensaMaxTransaction> getAllTransactionsByStatus(final TransactionStatus status) throws ApiException {
+        final Call<List<MensaMaxTransaction>> call = transactionService.getAllTransactionsByStatus(status);
+        final Response<List<MensaMaxTransaction>> response = handleCall(call);
+        return response.body();
+    }
+
+    public MensaMaxTransaction getTransactionById(final int transactionId) throws ApiException {
+        final Call<MensaMaxTransaction> call = transactionService.getTransactionById(transactionId);
+        final Response<MensaMaxTransaction> response = handleCall(call);
+        return response.body();
+    }
+
+    public void deleteTransactionById(final int transactionId) throws ApiException {
+        final Call<Void> call = transactionService.deleteTransactionById(transactionId);
         handleCall(call);
     }
 

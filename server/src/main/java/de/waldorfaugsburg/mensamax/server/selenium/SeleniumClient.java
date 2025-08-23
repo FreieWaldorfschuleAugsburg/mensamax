@@ -8,6 +8,7 @@ import java.io.Closeable;
 
 @Getter
 public final class SeleniumClient implements Closeable {
+
     private final int instanceId;
     private final FirefoxDriver webDriver;
 

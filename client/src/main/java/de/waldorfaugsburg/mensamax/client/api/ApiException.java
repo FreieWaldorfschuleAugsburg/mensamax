@@ -4,6 +4,7 @@ import lombok.Getter;
 
 @Getter
 public final class ApiException extends RuntimeException {
+
     private int responseCode;
     private ApiError error;
 

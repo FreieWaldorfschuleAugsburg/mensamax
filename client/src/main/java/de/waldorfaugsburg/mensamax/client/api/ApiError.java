@@ -8,6 +8,7 @@ import lombok.*;
 @EqualsAndHashCode()
 @ToString
 public final class ApiError {
+
     private String code;
     private String message;
 }

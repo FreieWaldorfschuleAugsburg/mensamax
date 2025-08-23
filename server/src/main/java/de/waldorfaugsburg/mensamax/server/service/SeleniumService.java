@@ -27,6 +27,7 @@ import java.util.function.Function;
 @Service
 @Slf4j
 public class SeleniumService {
+
     private final Set<SeleniumClientStack> stacks = new HashSet<>();
     private final SeleniumConfigurationProperties properties;
     private int instanceId;

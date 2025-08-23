@@ -10,10 +10,12 @@ import java.util.Set;
 @EqualsAndHashCode(of = "username")
 @ToString
 public final class MensaMaxUser {
+
     private String username;
     private String firstName;
     private String lastName;
     private String email;
     private String dateOfBirth;
     private String userGroup;
+    private int employeeId;
 }

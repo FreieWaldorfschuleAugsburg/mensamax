@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter;
 
 public class ApiKeyAuthFilter extends AbstractPreAuthenticatedProcessingFilter {
+
     private final String headerName;
 
     public ApiKeyAuthFilter(final String headerName) {

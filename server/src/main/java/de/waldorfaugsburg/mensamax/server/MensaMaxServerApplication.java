@@ -13,12 +13,15 @@ import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.Collections;
 
 @SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class, JacksonAutoConfiguration.class})
 @EnableConfigurationProperties({SeleniumConfigurationProperties.class, MensaMaxConfigurationProperties.class})
+@EnableScheduling
 public class MensaMaxServerApplication {
+
     public MensaMaxServerApplication() {
 
     }
