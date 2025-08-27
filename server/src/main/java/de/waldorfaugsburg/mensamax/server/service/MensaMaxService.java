@@ -15,9 +15,12 @@ import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -27,8 +30,11 @@ public class MensaMaxService {
     public static final String URL = "https://mensastadt.de";
     private static final String LOGIN_URL = URL + "/?projekt=%s&einrichtung=%s&user=%s";
     private static final String INDEX_URL = URL + "/mensamax/index.aspx";
-    private static final String SEARCH_URL = URL + "/mensamax/Formulare/Person/PersonSucheForm.aspx";
-    private static final String DATA_URL = URL + "/mensamax/Formulare/Person/PersonDatenForm.aspx";
+    private static final String PERSON_SEARCH_URL = URL + "/mensamax/Formulare/Person/PersonSucheForm.aspx";
+    private static final String PERSON_DATA_URL = URL + "/mensamax/Formulare/Person/PersonDatenForm.aspx";
+    private static final String PERSON_ROLE_URL = URL + "/mensamax/Formulare/Person/PersonRolleForm.aspx";
+    private static final String PERSON_EMAIL_URL = URL + "/mensamax/Formulare/Person/PersonEMailForm.aspx";
+    private static final String PERSON_CREATE_URL = URL + "/mensamax/Formulare/Person/PersonDatenForm.aspx?PersonID=0";
 
     private final LoadingCache<@NotNull String, @NotNull MensaMaxUser> userUsernameCache = CacheBuilder.newBuilder().expireAfterWrite(8, TimeUnit.HOURS).build(new CacheLoader<>() {
         @Override
@@ -79,24 +85,29 @@ public class MensaMaxService {
         }
     }
 
-    public MensaMaxUser findUserByChip(final String chip) {
+    public String findUsernameByChip(final String chip) throws InvalidChipException {
         Preconditions.checkNotNull(chip, "chip may not be null");
 
         final SeleniumClient client = clientStack.obtainClient();
         final WebDriver webDriver = client.getWebDriver();
         try {
             login(client);
-            webDriver.get(SEARCH_URL);
+            webDriver.get(PERSON_SEARCH_URL);
 
             seleniumService.click(webDriver, By.id("btnBarcodeSearch"));
             final WebElement barcodeElement = webDriver.switchTo().activeElement();
             barcodeElement.sendKeys(chip, Keys.ENTER);
 
-            log.info("Requested user by chip id '{}'", chip);
-            return readUserData(webDriver);
+            seleniumService.waitUntil(webDriver, ExpectedConditions.urlMatches(PERSON_DATA_URL));
+            final String username = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxBenutzername")).getDomAttribute("value");
+            log.info("Requested username '{}' by chip id '{}'", username, chip);
+            return username;
+        } catch (final TimeoutException e) {
+            log.error("Couldn't find username for invalid chip '{}'", chip);
+            throw new InvalidChipException(chip);
         } catch (final Exception e) {
             log.error("An error occurred while requesting user by chip id {}", chip, e);
-            throw new InvalidChipException(chip, e);
+            throw new UnknownErrorException(e);
         } finally {
             clientStack.returnClient(client);
         }
@@ -110,7 +121,7 @@ public class MensaMaxService {
         return findUserByInputField("tbxPersonalnummer", Integer.toString(employeeId));
     }
 
-    public MensaMaxUser findUserByInputField(final String inputFieldName, final String value) {
+    public MensaMaxUser findUserByInputField(final String inputFieldName, final String value) throws InvalidFieldException {
         Preconditions.checkNotNull(inputFieldName, "inputFieldName may not be null");
         Preconditions.checkNotNull(value, "value may not be null");
 
@@ -118,7 +129,7 @@ public class MensaMaxService {
         final WebDriver webDriver = client.getWebDriver();
         try {
             login(client);
-            webDriver.get(SEARCH_URL);
+            webDriver.get(PERSON_SEARCH_URL);
 
             seleniumService.clearAndSendKeys(webDriver, By.id(inputFieldName), value, Keys.ENTER);
 
@@ -130,6 +141,37 @@ public class MensaMaxService {
         } finally {
             clientStack.returnClient(client);
         }
+    }
+
+    public void createUser(final MensaMaxUser user) {
+        Preconditions.checkNotNull(user, "user may not be null");
+
+        final SeleniumClient client = clientStack.obtainClient();
+        final WebDriver webDriver = client.getWebDriver();
+        try {
+            login(client);
+
+            try {
+                getUserByUsername(user.getUsername());
+                throw new UserAlreadyExistsException(user.getUsername());
+            } catch (final Exception ignored) {
+            }
+
+            webDriver.get(PERSON_CREATE_URL);
+            writeUserData(webDriver, user);
+
+            log.info("Created user '{}''", user.getUsername());
+        } catch (final Exception e) {
+            log.error("An error occurred while creating user '{}'", user.getUsername(), e);
+            throw new UserCreationException(user.getUsername(), e);
+        } finally {
+            clientStack.returnClient(client);
+        }
+    }
+
+    public void updateUser(final MensaMaxUser user) {
+        Preconditions.checkNotNull(user, "user may not be null");
+
     }
 
     public void login(final SeleniumClient client) throws LoginException {
@@ -172,8 +214,55 @@ public class MensaMaxService {
         }
     }
 
+    private void writeUserData(final WebDriver webDriver, final MensaMaxUser user) {
+        seleniumService.waitUntil(webDriver, ExpectedConditions.or(ExpectedConditions.urlContains(PERSON_DATA_URL),
+                ExpectedConditions.urlMatches(PERSON_CREATE_URL)));
+
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxBenutzername"), user.getUsername());
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxNachname"), user.getLastName());
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxVorname"), user.getFirstName());
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxGebDatum"), user.getDateOfBirth());
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxPersNr"), Integer.toString(user.getEmployeeId()));
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxEmail"), user.getEmail());
+
+        seleniumService.click(webDriver, By.id("btnSpeichernPerson"));
+
+        // Wait until group selection is fully populated
+        seleniumService.waitUntil(webDriver, () -> new Select(seleniumService.waitUntilElementPresent(webDriver, By.id("cboKlasse"))).getOptions().size() > 1);
+
+        final Select userGroupSelector = new Select(seleniumService.waitUntilElementPresent(webDriver, By.id("cboKlasse")));
+        userGroupSelector.selectByVisibleText(user.getUserGroup());
+        seleniumService.click(webDriver, By.id("btnSpeichernPerson"));
+
+        seleniumService.waitUntil(webDriver, () -> new Select(seleniumService.waitUntilElementPresent(webDriver, By.id("cboKlasse")))
+                .getFirstSelectedOption().getText().equals(user.getUserGroup()));
+        seleniumService.waitForJavascript(webDriver, 2000, 20);
+
+        // Copy person email to role
+        webDriver.get(PERSON_ROLE_URL);
+        seleniumService.waitUntil(webDriver, ExpectedConditions.urlMatches(PERSON_ROLE_URL));
+
+        seleniumService.click(webDriver, By.id("btnVonPers"));
+        seleniumService.waitForJavascript(webDriver, 2000, 20);
+
+        seleniumService.click(webDriver, By.id("btnSave"));
+        seleniumService.waitForJavascript(webDriver, 2000, 20);
+
+        webDriver.get(PERSON_EMAIL_URL);
+        seleniumService.waitUntil(webDriver, ExpectedConditions.urlMatches(PERSON_EMAIL_URL));
+
+        // Enter contact emails
+        final String contactEmailsString = String.join(",", user.getContactEmails());
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxLastschriftEMail"), contactEmailsString);
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxHinweisEMail"), contactEmailsString);
+        seleniumService.clearAndSendKeys(webDriver, By.id("tbxMitteilungen"), contactEmailsString);
+        seleniumService.click(webDriver, By.id("btnSpeichern"));
+        seleniumService.waitForJavascript(webDriver, 2000, 20);
+    }
+
     private MensaMaxUser readUserData(final WebDriver webDriver) throws TimeoutException {
-        seleniumService.waitUntil(webDriver, ExpectedConditions.or(ExpectedConditions.urlMatches(DATA_URL)));
+        seleniumService.waitUntil(webDriver, ExpectedConditions.or(ExpectedConditions.urlContains(PERSON_DATA_URL),
+                ExpectedConditions.urlMatches(PERSON_CREATE_URL)));
 
         final String username = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxBenutzername")).getDomAttribute("value");
         final String firstName = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxVorname")).getDomAttribute("value");
@@ -191,6 +280,15 @@ public class MensaMaxService {
             log.warn("Invalid employeeId for user '{}'", username);
         }
 
-        return new MensaMaxUser(username, firstName, lastName, email, dateOfBirth, userGroup, employeeId);
+        webDriver.get(PERSON_EMAIL_URL);
+        seleniumService.waitUntil(webDriver, ExpectedConditions.urlMatches(PERSON_EMAIL_URL));
+
+        final List<String> contactEmails = new ArrayList<>();
+        final String contactEmailsString = seleniumService.waitUntilElementPresent(webDriver, By.id("tbxLastschriftEMail")).getText();
+        if (!contactEmailsString.isEmpty()) {
+            contactEmails.addAll(List.of(contactEmailsString.split(",")));
+        }
+
+        return new MensaMaxUser(username, firstName, lastName, email, contactEmails, dateOfBirth, userGroup, employeeId);
     }
 }

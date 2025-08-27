@@ -9,20 +9,28 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @ResponseStatus(HttpStatus.NOT_FOUND)
 public final class InvalidFieldException extends RuntimeException {
 
-    private final String username;
+    private final String inputFieldName;
+    private final String value;
 
-    public InvalidFieldException(final String inputFieldName, final String username) {
-        super(String.format("Could not find user by field %s with value %s", inputFieldName, username));
-        this.username = username;
+    public InvalidFieldException(final String inputFieldName, final String value) {
+        super(String.format("Could not find user by field %s with value %s", inputFieldName, value));
+        this.inputFieldName = inputFieldName;
+        this.value = value;
     }
 
-    public InvalidFieldException(final String inputFieldName, final String username, final Throwable cause) {
-        super(String.format("Could not find user by field %s with value %s", inputFieldName, username), cause);
-        this.username = username;
+    public InvalidFieldException(final String inputFieldName, final String value, final Throwable cause) {
+        super(String.format("Could not find user by field %s with value %s", inputFieldName, value), cause);
+        this.inputFieldName = inputFieldName;
+        this.value = value;
     }
 
     @ResponseErrorProperty
-    public String getUsername() {
-        return username;
+    public String getValue() {
+        return value;
+    }
+
+    @ResponseErrorProperty
+    public String getInputFieldName() {
+        return inputFieldName;
     }
 }

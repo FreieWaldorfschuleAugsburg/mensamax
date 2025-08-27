@@ -12,6 +12,7 @@ import java.util.Date;
 public final class MensaMaxTransaction {
 
     private long id;
+    private String username;
     private String chip;
     private long barcode;
     private int quantity;

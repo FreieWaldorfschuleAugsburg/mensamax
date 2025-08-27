@@ -23,6 +23,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 @Service
 @Slf4j
@@ -65,9 +66,28 @@ public class SeleniumService {
         return waitUntil(webDriver, ExpectedConditions.refreshed(ExpectedConditions.presenceOfAllElementsLocatedBy(locator)));
     }
 
+    public void waitUntil(final WebDriver webDriver, final Supplier<Boolean> condition) throws TimeoutException {
+        waitUntil(webDriver, d -> condition.get());
+    }
+
     public <T> T waitUntil(final WebDriver webDriver, final Function<? super WebDriver, T> condition) throws TimeoutException {
-        final WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(1));
+        final WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(3));
         return wait.until(condition);
+    }
+
+    public void waitForJavascript(final WebDriver webDriver, final int maxWaitMillis, int pollDelimiter) {
+        double startTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() < startTime + maxWaitMillis) {
+            String prevState = webDriver.getPageSource();
+            try {
+                Thread.sleep(pollDelimiter); // <-- would need to wrap in a try catch
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            if (prevState.equals(webDriver.getPageSource())) {
+                return;
+            }
+        }
     }
 
     public SeleniumClientStack reserveClients(final int amount, final Consumer<SeleniumClient> initialize) {

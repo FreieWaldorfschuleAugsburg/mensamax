@@ -24,6 +24,7 @@ public class MensaMaxTransactionEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
+    private String username;
     private String chip;
     private String kiosk;
     private long barcode;
@@ -35,6 +36,6 @@ public class MensaMaxTransactionEntity {
     private Instant performedAt;
 
     public MensaMaxTransaction asModel() {
-        return new MensaMaxTransaction(id, chip, barcode, quantity, status, Date.from(recordedAt), performedAt != null ? Date.from(performedAt) : null);
+        return new MensaMaxTransaction(id, username, chip, barcode, quantity, status, Date.from(recordedAt), performedAt != null ? Date.from(performedAt) : null);
     }
 }

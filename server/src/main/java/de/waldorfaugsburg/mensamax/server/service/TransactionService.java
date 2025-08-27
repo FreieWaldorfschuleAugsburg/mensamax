@@ -69,6 +69,7 @@ public class TransactionService {
 
     public void recordTransaction(final String chip, final String kiosk, final long barcode, final int quantity) {
         final MensaMaxTransactionEntity entity = new MensaMaxTransactionEntity();
+        entity.setUsername(mensaMaxService.findUsernameByChip(chip));
         entity.setChip(chip);
         entity.setKiosk(kiosk);
         entity.setBarcode(barcode);
@@ -145,7 +146,7 @@ public class TransactionService {
                 throw new UnknownErrorException(sourceStringPayment);
             }
 
-            log.info("Processed transaction for product '{}' by chip id '{}'", entity.getBarcode(), entity.getChip());
+            log.info("Processed transaction for product '{}' by user '{}' (Chip: {})", entity.getBarcode(), entity.getUsername(), entity.getChip());
         } catch (final Exception e) {
             log.error("An error occurred while performing transaction", e);
             throw e;

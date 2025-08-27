@@ -15,6 +15,12 @@ public class UserController {
         this.mensaMaxService = service;
     }
 
+    @PostMapping("/user")
+    public ResponseEntity<MensaMaxUser> createUser(@RequestBody MensaMaxUser mensaMaxUser) {
+        mensaMaxService.createUser(mensaMaxUser);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
     @GetMapping("/user/username/{username}")
     public ResponseEntity<MensaMaxUser> getUserByChipId(@PathVariable("username") final String username) {
         final MensaMaxUser user = mensaMaxService.getUserByUsername(username);
